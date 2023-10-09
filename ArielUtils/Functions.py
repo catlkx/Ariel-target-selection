@@ -128,10 +128,4 @@ def find_fitness(distance:float,
     else:
         F = (orbital_period)**2 * quality_metric**2 * (wait_time)**3
     return F, wait_time
-
-
-
-def find_best_target(target:pd.Dataframe, currentRA:float, currentDEC:float,
-                     current_time, )
-
 # # # # # #
