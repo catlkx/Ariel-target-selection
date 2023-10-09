@@ -22,4 +22,4 @@ BASELINE_RATIO = 0.25 # ratio of baseline-to-event-duration on either side of th
 BASELINE_DURATION = 30 # baseline duration, on either side of the event
 
 # Original Reference time
-T_0 = 0 # MJD calendar (November 17ty 1858)
+T_0 = 0 # MJD calendar (November 17th 1858)
