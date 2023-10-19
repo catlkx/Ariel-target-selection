@@ -113,19 +113,51 @@ def find_slewtime_minutes(dec1:float,
     return (distance / slewrate)
 
 
+# Checks if calibration must be done
+def check_calibration(time_elapsed, frequency, error, time_of_previous_calibration):
+    if (time_elapsed - time_of_previous_calibration) <= frequency-error:
+        return False
+    diff = time_elapsed % frequency
+    if diff <= error or frequency-diff <= error:
+        return True
+    return False
+
+
 # Fitness function
-def find_fitness(distance:float, 
-                 event_duration, 
-                 orbital_period, 
-                 quality_metric, 
-                 time_till_event=0, 
-                 slewrate=SLEWRATE, 
-                 settle_time = SETTLE_TIME, 
-                 baseline_duration=BASELINE_RATIO):
-    wait_time = time_till_event - distance/slewrate + settle_time + 2*baseline_duration*event_duration
-    if wait_time <= 0:
-        F = 0
+def fitness(distance:float, 
+            event_duration:float, 
+            orbital_period:float, 
+            time_till_event:float, 
+            quality_metric:float=1, 
+            slewrate:float=SLEWRATE, 
+            settle_time:float=SETTLE_TIME, 
+            baseline_duration:float=BASELINE_RATIO):
+    wait_time = time_till_event - (distance/slewrate + settle_time + baseline_duration/2)
+    if wait_time < 0:
+        F = 0 # setting fitness to 0 if wait time is negative
     else:
-        F = (orbital_period)**2 * quality_metric**2 * (wait_time)**3
+        F = orbital_period * quality_metric / (wait_time+1)
     return F, wait_time
+
+# Sorts targets by fitness
+def sort_by_fitness(targets:pd.DataFrame, 
+                    time:Time=Time.now(),
+                    currentRA:float=0, 
+                    currentDEC:float=0)->list:
+    targets_copy = targets.copy(deep=True)
+    time.format = 'mjd'
+    for index, target in targets_copy.iterrows():
+        dist = dist_angle(currentDEC, currentRA, target['Star Dec'], target['Star RA'])
+        period = target['Planet Period [days]']
+        t_diff = time.value - target['T_ref']
+        time_till_transit = (period - t_diff) % period
+        fit_val, wait_time = fitness(dist, 
+                          target['Transit Duration [s]']/60,
+                          period*24*60, 
+                          time_till_transit*24*60
+                          )
+        targets_copy.at[index, 'Fitness'] = fit_val
+        targets_copy.at[index, 'Wait Time'] = wait_time
+    targets_copy.sort_values(by=['Fitness'], ascending=False, inplace=True)
+    return targets_copy
 # # # # # #
