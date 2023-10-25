@@ -113,8 +113,20 @@ def find_slewtime_minutes(dec1:float,
     return (distance / slewrate)
 
 
+
 # Checks if calibration must be done
-def check_calibration(time_elapsed, frequency, error, time_of_previous_calibration):
+def check_calibration(time_elapsed:float, frequency:float, error:float, time_of_previous_calibration:float)->bool:
+    """Returns whether calibration is due. 
+
+    Args:
+        time_elapsed (float): Time elapsed since beginning of mission.
+        frequency (float): Frequency of calibrations.
+        error (float): The range within which calibration should be done (frequency +- error).
+        time_of_previous_calibration (float): time of previous calibration.
+
+    Returns:
+        bool: True if calibration is due, False if not. 
+    """
     if (time_elapsed - time_of_previous_calibration) <= frequency-error:
         return False
     diff = time_elapsed % frequency
@@ -131,7 +143,22 @@ def fitness(distance:float,
             quality_metric:float=1, 
             slewrate:float=SLEWRATE, 
             settle_time:float=SETTLE_TIME, 
-            baseline_duration:float=BASELINE_RATIO):
+            baseline_duration:float=BASELINE_DURATION):
+    """Returns the fitness value a target given parameters, as well as the estimated time until the telescope has to move to observe the next event. Note that units are not compensated for, so be sure to use the same units for consistency.
+
+    Args:
+        distance (float): Distance between current pointing position & target location. 
+        event_duration (float): Event duration.
+        orbital_period (float): Orbital period.
+        time_till_event (float): Time until the next event.
+        quality_metric (float, optional): The quality metric of the target. Left vague, since it is metric-independent, it just uses it for a relative value. Defaults to 1.
+        slewrate (float, optional): Slewrate of telescope. Defaults to SLEWRATE.
+        settle_time (float, optional): Settle time of telescope. Defaults to SETTLE_TIME.
+        baseline_duration (float, optional): Baseline duration. Defaults to BASELINE_RATIO.
+
+    Returns:
+        (float, float): Fitness, wait time. 
+    """
     wait_time = time_till_event - (distance/slewrate + settle_time + baseline_duration/2)
     if wait_time < 0:
         F = 0 # setting fitness to 0 if wait time is negative
@@ -139,11 +166,23 @@ def fitness(distance:float,
         F = orbital_period * quality_metric / (wait_time+1)
     return F, wait_time
 
+
 # Sorts targets by fitness
 def sort_by_fitness(targets:pd.DataFrame, 
                     time:Time=Time.now(),
                     currentRA:float=0, 
-                    currentDEC:float=0)->list:
+                    currentDEC:float=0)->pd.DataFrame:
+    """Returns a data frame containing all the input targets, but sorted in order of fitness.
+
+    Args:
+        targets (pd.DataFrame): Data frame of targets-of-interest.
+        time (Time, optional): Time of interest. Defaults to Time.now().
+        currentRA (float, optional): Current right-ascension. Defaults to 0.
+        currentDEC (float, optional): Current declination. Defaults to 0.
+
+    Returns:
+        pd.DataFrame: Data frame of all the targets in order of their fitness.
+    """
     targets_copy = targets.copy(deep=True)
     time.format = 'mjd'
     for index, target in targets_copy.iterrows():
